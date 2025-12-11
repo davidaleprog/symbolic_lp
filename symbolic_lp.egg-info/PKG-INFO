@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: symbolic_lp
+Version: 0.1.0
+Summary: Toolkit to express Linear Programs constraint in a symbolic and natural way and get parameterized matrix constraints.
+Author: Alexis DAVID
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: torch>=1.10.0
+
+# symbolic_lp
+Toolkit to express Linear Programs constraint in a symbolic and natural way and get parameterized matrix constraints. 

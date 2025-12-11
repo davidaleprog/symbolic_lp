@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "symbolic_lp"
+version = "0.1.0"
+description = "Toolkit to express Linear Programs constraint in a symbolic and natural way and get parameterized matrix constraints."
+authors = [{name = "Alexis DAVID"}]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.21.0",
+    "torch>=1.10.0",
+    "pytest>=6.2.0",
+    "pytest-cov"
+]

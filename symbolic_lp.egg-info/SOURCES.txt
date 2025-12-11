@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+symbolic_lp/__init__.py
+symbolic_lp/lib.py
+symbolic_lp/main.py
+symbolic_lp.egg-info/PKG-INFO
+symbolic_lp.egg-info/SOURCES.txt
+symbolic_lp.egg-info/dependency_links.txt
+symbolic_lp.egg-info/requires.txt
+symbolic_lp.egg-info/top_level.txt
+tests/test_lib.py
+tests/test_main.py
