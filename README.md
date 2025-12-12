@@ -1,6 +1,8 @@
 # symbolic_lp
 Toolkit to express linear program constraints in a symbolic and natural way and get parameterized matrix constraints. 
 
+## Installation
+pip install symbolic-lp
 
 ## Demo
 
