@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "symbolic-lp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Toolkit to express Linear Programs constraints in a symbolic and natural way and get parameterized matrix constraints."
 authors = [{name = "Alexis DAVID"}]
 readme = "README.md"
