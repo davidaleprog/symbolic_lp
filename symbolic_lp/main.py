@@ -1,4 +1,4 @@
-from .lib import (
+from symbolic_lp.lib import (
     Variable,
     Parameter,
     LinearExpression,
@@ -55,7 +55,7 @@ class Model:
     def get_vector_x(self):
         return np.array([v.name for v in self.variables])
 
-    def build_matrices(self, param_values=None):
+    def build_unbatched_matrices(self, param_values=None):
         n = len(self.variables)
         self._set_param_values(param_values)
         self._check_param_values()
@@ -124,19 +124,17 @@ class Model:
                 )
 
     def _eval_to_float(self, val):
-        """Convert any value type to float or array of floats."""
-        if isinstance(val, Parameter):
-            v = val._get_value()
-            if isinstance(v, (np.ndarray, torch.Tensor)):
-                return np.asarray(v, dtype=float)
-            return float(v)
-        elif isinstance(val, ParameterExpression):
+        """Convert any value type to float"""
+        if isinstance(val, ParameterExpression):
             result = val.evaluate()
-            if isinstance(result, (np.ndarray, torch.Tensor)):
-                return np.asarray(result, dtype=float)
-            return float(result)
-        elif isinstance(val, (np.ndarray, torch.Tensor)):
-            return np.asarray(val, dtype=float)
+            return self._eval_to_float(result)
+        elif isinstance(val, Parameter):
+            v = val._get_value()
+            return self._eval_to_float(v)
+        elif isinstance(val, np.ndarray):
+            return float(val[0])  # assuming scalar
+        elif isinstance(val, torch.Tensor):
+            return val.item()
         elif isinstance(val, (int, float)):
             return float(val)
         else:
@@ -171,7 +169,7 @@ class Model:
     def __repr__(self):
         return f"Model(Variables: {self.variables}, Parameters: {self.parameters}, Constraints: {self.constraints})"
 
-    def __call__(self, param_values=None):
+    def get_matrices(self, param_values=None):
         first_param_val = (
             param_values[next(iter(param_values))] if param_values else None
         )
@@ -186,11 +184,67 @@ class Model:
 
             def build_for_batch(param_batch):
                 model_copy = copy.deepcopy(self) # avoid mutation of model state across threads
-                return model_copy.build_matrices(param_batch)
+                return model_copy.build_unbatched_matrices(param_batch)
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 results = list(executor.map(build_for_batch, param_batches))
             A_list, b_list = zip(*results)
             return np.array(A_list), np.array(b_list)
         else:
-            return self.build_matrices(param_values)
+            return self.build_unbatched_matrices(param_values)
+
+
+if __name__ == "__main__":
+    microgrid_model = Model()
+    u_c = microgrid_model.add_var("u_c", 3)  # Charge power over 3 time steps
+    u_d = microgrid_model.add_var("u_d", 3)  # Discharge power over 3 time steps
+    s = microgrid_model.add_var("s", 4)      # State of charge over 4 time steps
+    g = microgrid_model.add_var("g", 3)  # Grid
+    g_DC = microgrid_model.add_var("g_DC", 3)  # Demand charge slack variable over 3 time steps
+
+    soc0 = microgrid_model.add_param("soc0", 1)  # Initial state of charge
+    rho_c = microgrid_model.add_param("rho_c", 1)  # Charge efficiency
+    rho_d = microgrid_model.add_param("rho_d", 1)  # Discharge efficiency
+    U_bar = microgrid_model.add_param("U_bar", 1)  # Max charge power
+    U_underbar = microgrid_model.add_param("U_underbar", 1)  # Max discharge power
+    S_bar = microgrid_model.add_param("S_bar", 1)  # Battery capacity
+    G_bar = microgrid_model.add_param("G_bar", 1)  # Max grid import power
+    M = microgrid_model.add_param("M", 1)  # Demand charge price
+    w = microgrid_model.add_param("w", 3)  # Net demand over 4 time steps
+
+    # Constraints
+    microgrid_model.add_constraint(s[0] == soc0)
+    for t in range(3):
+        microgrid_model.add_constraint(
+            s[t+1] == s[t] + (rho_c * u_c[t] - (1 / rho_d) * u_d[t]) / S_bar
+        )
+        microgrid_model.add_constraint(
+            g[t]== w[t] + u_c[t] - u_d[t]
+        )
+        microgrid_model.add_constraint(
+            g[t] - g_DC[t] <= G_bar
+        )
+        microgrid_model.add_constraint(
+            u_c[t] <= U_bar
+        )
+        microgrid_model.add_constraint(
+            u_d[t] <= U_underbar
+        )
+        microgrid_model.add_constraint(
+            s[t+1] <= 1
+        )
+        microgrid_model.add_constraint(
+            s[t+1] >= 0
+        )
+
+    A, b = microgrid_model.get_matrices(param_values={
+        "soc0": torch.ones(1)*0.5,
+        "rho_c": torch.ones(1)*0.9,
+        "rho_d": torch.ones(1)*0.9,
+        "U_bar": torch.ones(1)*4.0,
+        "U_underbar": torch.ones(1)*5.0,
+        "S_bar": torch.ones(1)*20.0,
+        "G_bar": torch.ones(1)*10.0,
+        "M": torch.ones(1)*2.0,
+        "w": torch.randn(3)*3.0
+    })

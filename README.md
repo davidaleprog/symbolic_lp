@@ -15,9 +15,36 @@ from symbolic_lp import Model
 model = Model()
 
 # Add variables and parameters
-x = model.add_var("x", 2)
-p = model.add_param("p", 2)
+# symbolic_lp
 
+symbolic_lp is a Python package for symbolic linear programming models.
+
+## Installation
+
+You can install the latest version (1.2) from this repository using pip:
+
+```sh
+pip install .
+```
+
+Or, if you want to install it from a local wheel (recommended for distribution):
+
+```sh
+python -m build
+pip install dist/symbolic_lp-1.2-py3-none-any.whl
+```
+
+## Usage
+
+Import the package in your Python code:
+
+```python
+import symbolic_lp
+```
+
+## Version
+
+Current version: 1.2
 # Add constraints
 model.add_constraint(x[0] + p[0] <= 10)
 model.add_constraint(2 * x[1] - p[1] >= 5)

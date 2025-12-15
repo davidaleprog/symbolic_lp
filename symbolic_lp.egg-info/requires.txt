@@ -4,3 +4,6 @@ torch>=1.10.0
 [dev]
 pytest>=6.2.0
 pytest-cov>=4.0.0
+black
+flake8
+isort

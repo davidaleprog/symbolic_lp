@@ -1,10 +1,18 @@
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.2.0",
+    "pytest-cov>=4.0.0",
+    "black",
+    "flake8",
+    "isort"
+]
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "symbolic-lp"
-version = "0.1.1"
+version = "0.1.2"
 description = "Toolkit to express Linear Programs constraints in a symbolic and natural way and get parameterized matrix constraints."
 authors = [{name = "Alexis DAVID"}]
 readme = "README.md"
@@ -28,11 +36,6 @@ dependencies = [
     "torch>=1.10.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=6.2.0",
-    "pytest-cov>=4.0.0",
-]
 
 [project.urls]
 Homepage = "https://github.com/davidaleprog/symbolic_lp"  # Update with your actual GitHub URL

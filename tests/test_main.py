@@ -55,7 +55,7 @@ class TestModel:
 
         x = model.add_var("x", 1)
         model.add_constraint(x <= 5)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (1, 1)
         assert np.allclose(A, [[1]])
         assert np.allclose(b, [5])
@@ -65,7 +65,7 @@ class TestModel:
 
         x = model.add_var("x", 1)
         model.add_constraint(x >= 3)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (1, 1)
         assert np.allclose(A, [[-1]])
         assert np.allclose(b, [-3])
@@ -75,7 +75,7 @@ class TestModel:
 
         x = model.add_var("x", 1)
         model.add_constraint(x == 5)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (2, 1)
         assert np.allclose(A, [[1], [-1]])
         assert np.allclose(b, [5, -5])
@@ -86,7 +86,7 @@ class TestModel:
         x = model.add_var("x")
         y = model.add_var("y")
         model.add_constraint(2*x + 3*y <= 10)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (1, 2)
         assert np.allclose(A, [[2, 3]])
         assert np.allclose(b, [10])
@@ -96,7 +96,7 @@ class TestModel:
 
         x = model.add_var("x")
         model.add_constraint(2*x + 5 <= 10)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (1, 1)
         assert np.allclose(A, [[2]])
         assert np.allclose(b, [5])
@@ -107,7 +107,7 @@ class TestModel:
         x = model.add_var("x")
         y = model.add_var("y")
         model.add_constraint(3*x - 2*y + 7 <= 15)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (1, 2)
         assert np.allclose(A, [[3, -2]])
         assert np.allclose(b, [8])
@@ -120,7 +120,7 @@ class TestModel:
         model.add_constraint(x + y <= 10)
         model.add_constraint(x >= 0)
         model.add_constraint(y >= 0)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (3, 2)
         # x + y <= 10: [1, 1]
         # x >= 0 → -x <= 0: [-1, 0]
@@ -136,7 +136,7 @@ class TestModel:
         x = model.add_var("x")
         y = model.add_var("y")
         model.add_constraint(x <= 2*y + 5)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (1, 2)
         assert np.allclose(A, [[1, -2]])
         assert np.allclose(b, [5])
@@ -147,7 +147,7 @@ class TestModel:
         x = model.add_var("x")
         y = model.add_var("y")
         model.add_constraint(2*x + 3 <= 4*y - 7)
-        A, b = model.build_matrices()
+        A, b = model.get_matrices()
         assert A.shape == (1, 2)
         assert np.allclose(A, [[2, -4]])
         assert np.allclose(b, [-10])
@@ -158,7 +158,7 @@ class TestModel:
         x = model.add_var("x")
         p = model.add_param("p", 1)
         model.add_constraint(x + p <= 10)
-        A, b = model.build_matrices({"p": 4})
+        A, b = model.get_matrices({"p": 4})
         assert A.shape == (1, 1)
         assert np.allclose(A, [[1]])
         assert np.allclose(b, [10 - p.value])
@@ -174,7 +174,7 @@ class TestModel:
         p2 = model.add_param("p2", 1)
         p3 = model.add_param("p3")
         model.add_constraint(x1*9 + p1*x2 + p2 - p3<=  + 5)
-        A, b = model.build_matrices({"p1": 3, "p2": 8, "p3": 2})
+        A, b = model.get_matrices({"p1": 3, "p2": 8, "p3": 2})
         assert A.shape == (1, 2)
         assert np.allclose(A, [[9, p1.value]])
         assert np.allclose(b, [5 + p3.value - p2.value])
@@ -221,11 +221,26 @@ class TestModel:
         p = model.add_param("p", 4)
         model.add_constraint(x[0] + 2*x[1] + p[0] <= 10)
         model.add_constraint(3*x[2] - p[2]*x[3] >= p[1] + 5)
-        A, b = model.build_matrices({"p": [1, 4, 9, 0]})
+        A, b = model.get_matrices({"p": [1, 4, 9, 0]})
         assert p[2].value == 9
         # assert A.shape == (2, 4), f"Expected shape (2,4), got {A.shape}"
         assert np.allclose(A, [[1, 2, 0, 0], [0, 0, -3, 9]]), f"Unexpected A: {A}"
         assert np.allclose(b, [10 - 1, -5 - 4]), f"Unexpected b: {b}"
+
+    
+    def test_batched_lp_simple(self, model):
+        x = model.add_var("x", 2)
+        p = model.add_param("p", 2)
+        model.add_constraint(p[0]*x[0] + 2*x[1] <= 8)
+        model.add_constraint(3*x[0] - p[1]*x[1] >= 4)
+        p_value = torch.tensor([[2, 3], [1, 2], [4, 5]])
+        A, b = model.get_matrices({"p": p_value})
+        assert p_value.shape == (3, 2)
+        assert A.shape == (3, 2, 2)
+        assert np.allclose(A[0], [[2, 2], [-3, 3]])
+        assert np.allclose(A[1], [[1, 2], [-3, 2]])
+        assert np.allclose(A[2], [[4, 2], [-3, 5]])
+        assert np.allclose(b, [[8, -4], [8, -4], [8, -4]])
     
     def test_battery_storage_like_problem(self, model):
         """Test a problem similar to battery storage constraints"""
@@ -250,7 +265,7 @@ class TestModel:
             model.add_constraint(s[i] <= 1)
             model.add_constraint(s[i+1] == s[i] + (0.9*u_c[i] - 1.0*u_d[i])*0.1)
         
-        A, b = model.build_matrices({"netload": [2.0]*10})
+        A, b = model.get_matrices({"netload": [2.0]*10})
         nb_constraints = 7*10 + 2*2*10 + 2  # 7 <= per time step, 2 == per timstep, 2 for initial and final state
         assert A.shape == (nb_constraints, len(model.variables))
         assert b.shape == (nb_constraints,)
@@ -299,34 +314,68 @@ class TestModel:
             model.add_constraint(u_c[i] >= 0)
             model.add_constraint(u_d[i] >= 0)
 
-        A, b = model.build_matrices({"w": [0.5]*horizon_size, "soc0": 0.2})
+        A, b = model.get_matrices({"w": [0.5]*horizon_size, "soc0": 0.2})
         expected_num_constraints = (
             14*horizon_size + 
             2  # s[0] == soc0
         )
         assert A.shape == (expected_num_constraints, len(model.variables))
 
-    def test_call(self, model):
-        # Not batched test
-        x = model.add_var("x", 2)
-        p = model.add_param("p", 2)
-        model.add_constraint(x[0] + p[0] <= 10)
-        model.add_constraint(2*x[1] - p[1] >= 5)
+        
+    def test_batched_microgrid(self):
+        microgrid_model = Model()
+        u_c = microgrid_model.add_var("u_c", 3)  # Charge power over 3 time steps
+        u_d = microgrid_model.add_var("u_d", 3)  # Discharge power over 3 time steps
+        s = microgrid_model.add_var("s", 4)      # State of charge over 4 time steps
+        g = microgrid_model.add_var("g", 3)  # Grid
+        g_DC = microgrid_model.add_var("g_DC", 3)  # Demand charge slack variable over 3 time steps
 
-        A, b = model.build_matrices(param_values={"p": [3, 4]})
-        assert A.shape == (2, 2)
-        assert np.allclose(A, [[1, 0], [0, -2]])
-        assert np.allclose(b, [7, -9])
+        soc0 = microgrid_model.add_param("soc0", 1)  # Initial state of charge
+        rho_c = microgrid_model.add_param("rho_c", 1)  # Charge efficiency
+        rho_d = microgrid_model.add_param("rho_d", 1)  # Discharge efficiency
+        U_bar = microgrid_model.add_param("U_bar", 1)  # Max charge power
+        U_underbar = microgrid_model.add_param("U_underbar", 1)  # Max discharge power
+        S_bar = microgrid_model.add_param("S_bar", 1)  # Battery capacity
+        G_bar = microgrid_model.add_param("G_bar", 1)  # Max grid import power
+        M = microgrid_model.add_param("M", 1)  # Demand charge price
+        w = microgrid_model.add_param("w", 3)  # Net demand over 4 time steps
 
-        # batched test
-        np_batched_p_values = np.random.randn(20, 2) + 4
-        torch_batched_p_values = torch.tensor(np_batched_p_values, dtype=torch.float32)
-        for batched_p_values in [np_batched_p_values, torch_batched_p_values]:
-            A_batched, b_batched = model(param_values={"p": batched_p_values})
-            assert A_batched.shape == (20, 2, 2)
-            for i in range(20):
-                assert np.allclose(A_batched[i], [[1, 0], [0, -2]])
-                assert np.allclose(b_batched[i], [10 - (batched_p_values[i][0]), -5 - (batched_p_values[i][1])])
+        # Constraints
+        microgrid_model.add_constraint(s[0] == soc0)
+        for t in range(3):
+            microgrid_model.add_constraint(
+                s[t+1] == s[t] + (rho_c * u_c[t] - (1 / rho_d) * u_d[t]) / S_bar
+            )
+            microgrid_model.add_constraint(
+                g[t]== w[t] + u_c[t] - u_d[t]
+            )
+            microgrid_model.add_constraint(
+                g[t] - g_DC[t] <= G_bar
+            )
+            microgrid_model.add_constraint(
+                u_c[t] <= U_bar
+            )
+            microgrid_model.add_constraint(
+                u_d[t] <= U_underbar
+            )
+            microgrid_model.add_constraint(
+                s[t+1] <= 1
+            )
+            microgrid_model.add_constraint(
+                s[t+1] >= 0
+            )
+
+        A, b = microgrid_model.get_matrices(param_values={
+            "soc0": torch.ones(10,1)*0.5,
+            "rho_c": torch.ones(10,1)*0.9,
+            "rho_d": torch.ones(10,1)*0.9,
+            "U_bar": torch.ones(10,1)*4.0,
+            "U_underbar": torch.ones(10,1)*5.0,
+            "S_bar": torch.ones(10,1)*20.0,
+            "G_bar": torch.ones(10,1)*10.0,
+            "M": torch.ones(10,1)*2.0,
+            "w": torch.randn(10,3)*3.0
+        })
         
 
 if __name__ == "__main__":
